@@ -4,8 +4,8 @@
   "description": "A comprehensive learning platform for CBSE students with lecture videos, books, and study materials",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "concurrently \"npm run build:css\" \"nodemon app.js\"",
+    "start": "NODE_ENV=production node app.js",
+    "dev": "NODE_ENV=development concurrently \"npm run build:css\" \"nodemon app.js\"",
     "build:css": "tailwindcss -i ./public/css/style.css -o ./public/css/output.css --watch",
     "build": "tailwindcss -i ./public/css/style.css -o ./public/css/output.css --minify",
     "lint": "eslint .",
