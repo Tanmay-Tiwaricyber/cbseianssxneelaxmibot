@@ -27,7 +27,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session configuration
+// Session configuration - using MemoryStore (default)
 app.use(session({
     secret: 'your-secret-key',
     resave: false,
