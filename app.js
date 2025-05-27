@@ -6,7 +6,6 @@ const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const session = require('express-session');
-const MemoryStore = require('memorystore')(session);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,14 +27,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session configuration with MemoryStore
+// Session configuration with default MemoryStore
 app.use(session({
     secret: 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({
-        checkPeriod: 86400000 // prune expired entries every 24h
-    }),
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
