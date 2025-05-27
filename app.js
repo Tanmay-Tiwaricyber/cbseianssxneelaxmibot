@@ -31,7 +31,7 @@ app.use(express.static('public'));
 const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Changed to true to allow uninitialized sessions
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
@@ -51,13 +51,16 @@ app.use(session(sessionConfig));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Authentication middleware
+// Authentication middleware - modified to allow access to dashboard
 const requireAuth = (req, res, next) => {
-    if (req.session.user) {
-        next();
-    } else {
-        res.redirect('/login');
+    // If no user session exists, create a default one
+    if (!req.session.user) {
+        req.session.user = {
+            name: 'Guest User',
+            loginTime: new Date()
+        };
     }
+    next();
 };
 
 // Utility functions
@@ -171,8 +174,9 @@ const processBatchData = async (messages) => {
 
 // Routes
 app.get('/login', (req, res) => {
-    if (req.session.user) {
-        return res.redirect('/');
+    // If user is already logged in, redirect to dashboard
+    if (req.session.user && req.session.user.name !== 'Guest User') {
+        return res.redirect('/dashboard');
     }
     res.render('login');
 });
@@ -192,19 +196,18 @@ app.post('/login', (req, res) => {
 
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.redirect('/login');
+    res.redirect('/dashboard');
 });
 
+// Make dashboard the default route
 app.get('/', requireAuth, async (req, res, next) => {
     try {
         const messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
         const batches = await processBatchData(messages);
-        res.render('index', { 
-            title: 'Lecture Organizer',
-            batches: Object.values(batches),
-            formatFileSize,
-            moment,
-            user: req.session.user
+        res.render('dashboard', {
+            title: 'Dashboard - CBSEIANS',
+            user: req.session.user,
+            batches: Object.values(batches)
         });
     } catch (error) {
         next(error);
