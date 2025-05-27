@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= batch.name %> - MSG Store Bot</title>
+    <link rel="stylesheet" href="/css/output.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: rgba(17, 24, 39, 0.95);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: all 0.3s ease-in-out;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            border-left: 4px solid #10B981;
+        }
+        .toast.error {
+            border-left: 4px solid #EF4444;
+        }
+
+        /* Loading Screen Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1c2e 0%, #2d1b4e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Title Animation Styles */
+        .title-container {
+            text-align: center;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s ease-out forwards;
+        }
+
+        .app-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .developer-name {
+            font-size: 1.2rem;
+            color: #9ca3af;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+            }
+            to {
+                text-shadow: 0 0 20px rgba(139, 92, 246, 0.6),
+                            0 0 30px rgba(139, 92, 246, 0.4),
+                            0 0 40px rgba(139, 92, 246, 0.2);
+            }
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .quote-container {
+            margin-top: 2rem;
+            text-align: center;
+            max-width: 600px;
+            padding: 0 1rem;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 1s forwards;
+        }
+
+        .quote-text {
+            font-size: 1.25rem;
+            color: #fff;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .quote-author {
+            font-size: 1rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 2rem;
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 1.5s forwards;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100 min-h-screen">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="title-container">
+            <h1 class="app-title">Premium lectures Bot</h1>
+            <p class="developer-name">Developed by T4NM4Y</p>
+        </div>
+        <div class="loading-spinner"></div>
+        <div class="quote-container">
+            <p class="quote-text" id="quoteText"></p>
+            <p class="quote-author" id="quoteAuthor"></p>
+        </div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgress"></div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-6">
+            <a href="/" class="inline-flex items-center px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 text-white rounded-lg transition-all duration-300 backdrop-blur-sm border border-gray-700/50">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to Batches
+            </a>
+        </div>
+
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-xl border border-gray-700/50">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold mb-4 flex items-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <%= batch.name %>
+                    </h1>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-gray-700/50 rounded-lg p-3 backdrop-blur-sm">
+                            <div class="flex items-center text-sm">
+                                <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                <%= batch.lectures.length %> Lectures
+                            </div>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 backdrop-blur-sm">
+                            <div class="flex items-center text-sm">
+                                <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                </svg>
+                                <%= formatFileSize(batch.totalSize) %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div class="flex items-center bg-gray-700/30 rounded-lg p-2">
+                            <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            First: <%= batch.firstDate.date %> at <%= batch.firstDate.time %>
+                        </div>
+                        <div class="flex items-center bg-gray-700/30 rounded-lg p-2">
+                            <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Last: <%= batch.lastDate.date %> at <%= batch.lastDate.time %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <% if (batch.lectures.length > 0) { %>
+            <div class="mb-8">
+                <div class="flex items-center mb-6 pb-2 border-b border-gray-700/50">
+                    <svg class="w-6 h-6 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-semibold bg-gradient-to-r from-red-400 to-pink-500 bg-clip-text text-transparent">Lectures</h2>
+                </div>
+
+                <div id="lectures-content">
+                    <% const groupedLectures = {}; %>
+                    <% batch.lectures.forEach(lecture => { %>
+                        <% const date = lecture.date.split('T')[0]; %>
+                        <% if (!groupedLectures[date]) groupedLectures[date] = []; %>
+                        <% groupedLectures[date].push(lecture); %>
+                    <% }); %>
+
+                    <% Object.entries(groupedLectures).sort((a, b) => b[0].localeCompare(a[0])).forEach(([date, lectures]) => { %>
+                        <div class="mb-8">
+                            <div class="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg mb-4 backdrop-blur-sm border border-gray-700/50">
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="text-lg font-semibold"><%= new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) %></span>
+                                </div>
+                                <span class="bg-blue-500/20 text-blue-400 text-sm px-4 py-2 rounded-full backdrop-blur-sm border border-blue-500/20">
+                                    <%= lectures.length %> Lectures
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <% lectures.forEach(lecture => { %>
+                                    <div class="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 backdrop-blur-sm group">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center mb-2 flex-wrap gap-2">
+                                                    <span class="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">
+                                                        <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                        </svg>
+                                                        VIDEO
+                                                    </span>
+                                                    <span class="text-gray-400 text-sm whitespace-nowrap">
+                                                        <%= new Date(lecture.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %>
+                                                    </span>
+                                                </div>
+                                                <h3 class="text-lg font-medium text-gray-100 group-hover:text-blue-400 transition-colors duration-300 break-words">
+                                                    <%= lecture.caption %>
+                                                </h3>
+                                            </div>
+                                        </div>
+
+                                        <div class="space-y-3">
+                                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-gray-400 text-sm bg-gray-700/30 px-3 py-1 rounded-full whitespace-nowrap">
+                                                        <%= moment(lecture.date).fromNow() %>
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center space-x-2 flex-wrap">
+                                                    <span class="text-gray-400 text-sm bg-gray-700/30 px-3 py-1 rounded-full break-all">
+                                                        ID: <%= lecture.id %>
+                                                    </span>
+                                                    <button 
+                                                        onclick="copyToClipboard('<%= lecture.id %>', this)" 
+                                                        class="inline-flex items-center px-3 py-1 bg-gray-700/50 hover:bg-blue-500/50 text-gray-300 rounded-full transition-all duration-300 backdrop-blur-sm group-hover:bg-blue-500/20 whitespace-nowrap" 
+                                                        title="Copy ID"
+                                                    >
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                                        </svg>
+                                                        Copy
+                                                    </button>
+                                                    <a 
+                                                        href="https://t.me/CBSEIANS_ROBOT?text=/findmsg%20<%= lecture.id %>" 
+                                                        target="_blank"
+                                                        class="inline-flex items-center px-3 py-1 bg-blue-500/50 hover:bg-blue-600/50 text-white rounded-full transition-all duration-300 backdrop-blur-sm group-hover:bg-blue-600/20 whitespace-nowrap"
+                                                        title="View in Telegram"
+                                                    >
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                                        </svg>
+                                                        View in Telegram
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div class="text-gray-500 bg-gray-700/30 px-3 py-2 rounded-lg text-sm break-words">
+                                                <span class="font-medium text-gray-400">Filename:</span> <%= lecture.filename %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        <% } %>
+
+        <script>
+            // Loading Screen Quotes
+            const quotes = [
+                {
+                    text: "The only way to do great work is to love what you do.",
+                    author: "Steve Jobs"
+                },
+                {
+                    text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+                    author: "Winston Churchill"
+                },
+                {
+                    text: "The future belongs to those who believe in the beauty of their dreams.",
+                    author: "Eleanor Roosevelt"
+                },
+                {
+                    text: "Education is not the filling of a pail, but the lighting of a fire.",
+                    author: "William Butler Yeats"
+                },
+                {
+                    text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.",
+                    author: "Dr. Seuss"
+                },
+                {
+                    text: "Learning is a treasure that will follow its owner everywhere.",
+                    author: "Chinese Proverb"
+                },
+                {
+                    text: "The beautiful thing about learning is that nobody can take it away from you.",
+                    author: "B.B. King"
+                },
+                {
+                    text: "Education is the passport to the future, for tomorrow belongs to those who prepare for it today.",
+                    author: "Malcolm X"
+                }
+            ];
+
+            // Function to get random quote
+            function getRandomQuote() {
+                return quotes[Math.floor(Math.random() * quotes.length)];
+            }
+
+            // Function to update loading progress
+            function updateLoadingProgress(progress) {
+                const progressBar = document.getElementById('loadingProgress');
+                progressBar.style.width = `${progress}%`;
+            }
+
+            // Function to show random quote
+            function showRandomQuote() {
+                const quote = getRandomQuote();
+                document.getElementById('quoteText').textContent = quote.text;
+                document.getElementById('quoteAuthor').textContent = `- ${quote.author}`;
+            }
+
+            // Initialize loading screen
+            window.addEventListener('load', () => {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                let progress = 0;
+                
+                // Show initial quote
+                showRandomQuote();
+
+                // Simulate loading progress
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(progressInterval);
+                        
+                        // Fade out loading screen
+                        setTimeout(() => {
+                            loadingOverlay.classList.add('fade-out');
+                            setTimeout(() => {
+                                loadingOverlay.style.display = 'none';
+                            }, 500);
+                        }, 500);
+                    }
+                    updateLoadingProgress(progress);
+                }, 200);
+
+                // Change quote every 3 seconds
+                setInterval(showRandomQuote, 3000);
+            });
+
+            function copyToClipboard(text, button) {
+                // Store original button content
+                const originalContent = button.innerHTML;
+                
+                // Create a temporary textarea element
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                
+                // Select and copy
+                textarea.select();
+                textarea.setSelectionRange(0, 99999);
+                
+                let success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                }
+                
+                // Remove the temporary textarea
+                document.body.removeChild(textarea);
+                
+                if (success) {
+                    // Update button to show success
+                    button.innerHTML = `
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Copied!
+                    `;
+                    button.classList.add('bg-green-600/50', 'hover:bg-green-700/50');
+                    
+                    // Show success toast
+                    showToast('Message ID copied to clipboard!', 'success');
+                } else {
+                    // Show error state
+                    button.innerHTML = 'Failed!';
+                    button.classList.add('bg-red-600/50', 'hover:bg-red-700/50');
+                    
+                    // Show error toast
+                    showToast('Failed to copy message ID', 'error');
+                }
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.classList.remove('bg-green-600/50', 'hover:bg-green-700/50', 'bg-red-600/50', 'hover:bg-red-700/50');
+                }, 2000);
+            }
+
+            function showToast(message, type = 'success') {
+                // Remove any existing toasts
+                const existingToast = document.querySelector('.toast');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                // Set toast content
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        ${type === 'success' ? `
+                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        ` : `
+                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        `}
+                        <span>${message}</span>
+                    </div>
+                `;
+
+                // Add toast to document
+                document.body.appendChild(toast);
+
+                // Show toast
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 100);
+
+                // Remove toast after 3 seconds
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3000);
+            }
+        </script>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+.dark {
+    @apply bg-gray-900 text-gray-100;
+}
+
+.dark .card {
+    @apply bg-gray-800 border-gray-700;
+}
+
+.dark .btn {
+    @apply bg-gray-700 hover:bg-gray-600 text-gray-100;
+} 

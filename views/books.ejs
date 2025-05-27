@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books Library - CBSEIANS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: rgba(17, 24, 39, 0.95);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: all 0.3s ease-in-out;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            border-left: 4px solid #10B981;
+        }
+        .toast.error {
+            border-left: 4px solid #EF4444;
+        }
+
+        /* Loading Screen Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1c2e 0%, #2d1b4e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Title Animation Styles */
+        .title-container {
+            text-align: center;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s ease-out forwards;
+        }
+
+        .app-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .developer-name {
+            font-size: 1.2rem;
+            color: #9ca3af;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+            }
+            to {
+                text-shadow: 0 0 20px rgba(139, 92, 246, 0.6),
+                            0 0 30px rgba(139, 92, 246, 0.4),
+                            0 0 40px rgba(139, 92, 246, 0.2);
+            }
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .quote-container {
+            margin-top: 2rem;
+            text-align: center;
+            max-width: 600px;
+            padding: 0 1rem;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 1s forwards;
+        }
+
+        .quote-text {
+            font-size: 1.25rem;
+            color: #fff;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .quote-author {
+            font-size: 1rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 2rem;
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 1.5s forwards;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s ease-out;
+        }
+
+        /* File card styles */
+        .file-card {
+            background: #1F2937;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid #374151;
+        }
+
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-color: #3B82F6;
+        }
+
+        .file-icon {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, #3B82F6, #10B981);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .file-name {
+            color: #F3F4F6;
+            font-weight: 600;
+            margin-top: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .file-info {
+            color: #9CA3AF;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .view-button {
+            background: linear-gradient(135deg, #3B82F6, #10B981);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .view-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .search-input {
+            background: rgba(31, 41, 55, 0.5);
+            border: 1px solid #374151;
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .batch-header {
+            background: linear-gradient(135deg, #1F2937, #111827);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #374151;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100 min-h-screen">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="title-container">
+            <h1 class="app-title">Premium Bot</h1>
+            <p class="developer-name">Developed by T4NM4Y</p>
+        </div>
+        <div class="loading-spinner"></div>
+        <div class="quote-container">
+            <p class="quote-text" id="quoteText"></p>
+            <p class="quote-author" id="quoteAuthor"></p>
+        </div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgress"></div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Navigation -->
+        <div class="flex justify-between items-center mb-8">
+            <a href="/dashboard" class="inline-flex items-center px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 text-white rounded-lg transition-all duration-300 backdrop-blur-sm border border-gray-700/50">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to Dashboard
+            </a>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-400">Welcome, <%= user.name %></span>
+                <a href="/logout" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-300 backdrop-blur-sm border border-red-500/30">
+                    Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-xl border border-gray-700/50">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold mb-4 flex items-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        Books Library
+                    </h1>
+                    <p class="text-gray-400">Browse and access all your study materials organized by batches</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-8">
+            <input type="text" 
+                   id="searchInput" 
+                   class="search-input" 
+                   placeholder="Search for books..."
+                   onkeyup="filterBooks()">
+        </div>
+
+        <!-- Batch Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="booksGrid">
+            <% Object.entries(batches).forEach(([batch, files]) => { %>
+                <div class="batch-header">
+                    <h2 class="text-xl font-semibold mb-4 text-white"><%= batch %></h2>
+                    <div class="grid gap-4">
+                        <% files.forEach(file => { %>
+                            <div class="file-card">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center">
+                                        <div class="file-icon">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="file-name"><%= file.name %></div>
+                                            <div class="file-info">
+                                                <div><%= formatFileSize(file.size) %></div>
+                                                <div>Uploaded: <%= formatDateForDisplay(file.upload_date).relative %></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a href="/download/<%= file.file_id %>" 
+                                       class="view-button"
+                                       onclick="showToast('Downloading file...', 'success')">
+                                        <i class="fas fa-download"></i>
+                                        Download
+                                    </a>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div id="toastIcon"></div>
+        <div id="toastMessage"></div>
+    </div>
+
+    <script>
+        const batches = <%- JSON.stringify(batches) %>;
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return {
+                date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+        }
+
+        function formatDateForDisplay(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+
+            if (diff < 60) {
+                return { relative: 'just now' };
+            } else if (diff < 3600) {
+                const minutes = Math.floor(diff / 60);
+                return { relative: `${minutes} minute${minutes > 1 ? 's' : ''} ago` };
+            } else if (diff < 86400) {
+                const hours = Math.floor(diff / 3600);
+                return { relative: `${hours} hour${hours > 1 ? 's' : ''} ago` };
+            } else if (diff < 172800) {
+                return { relative: 'yesterday' };
+            } else {
+                return { relative: formatDate(dateString).date };
+            }
+        }
+
+        // Loading screen
+        window.addEventListener('load', () => {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingProgress = document.getElementById('loadingProgress');
+            const quoteText = document.getElementById('quoteText');
+            const quoteAuthor = document.getElementById('quoteAuthor');
+
+            // Set loading progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 1;
+                loadingProgress.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('fade-out');
+                        setTimeout(() => {
+                            loadingOverlay.style.display = 'none';
+                        }, 500);
+                    }, 500);
+                }
+            }, 20);
+
+            // Set random quote
+            const quotes = [
+                { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+                { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+                { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" }
+            ];
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            quoteText.textContent = randomQuote.text;
+            quoteAuthor.textContent = `- ${randomQuote.author}`;
+        });
+
+        // Search functionality
+        function filterBooks() {
+            const searchInput = document.getElementById('searchInput');
+            const searchTerm = searchInput.value.toLowerCase();
+            const fileCards = document.querySelectorAll('.file-card');
+
+            fileCards.forEach(card => {
+                const fileName = card.querySelector('.file-name').textContent.toLowerCase();
+                const batchName = card.closest('.batch-header').querySelector('h2').textContent.toLowerCase();
+                
+                if (fileName.includes(searchTerm) || batchName.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type;
+            
+            if (type === 'success') {
+                toastIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+            } else {
+                toastIcon.innerHTML = '<i class="fas fa-exclamation-circle text-red-500"></i>';
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 
