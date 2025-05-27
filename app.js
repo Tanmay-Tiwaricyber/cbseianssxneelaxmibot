@@ -172,11 +172,39 @@ const processBatchData = async (messages) => {
     return batches;
 };
 
+// Default data for when message_batch.json is not available
+const defaultBatches = {
+    "batch1": {
+        "name": "Physics",
+        "lectures": [
+            {
+                "id": "lec1",
+                "type": "video",
+                "file_id": "video123",
+                "caption": "Introduction to Physics",
+                "date": "2024-03-15T10:00:00",
+                "username": "teacher1",
+                "first_name": "John"
+            }
+        ],
+        "documents": [
+            {
+                "id": "doc1",
+                "type": "text",
+                "text": "Important formulas for mechanics",
+                "date": "2024-03-15T14:00:00",
+                "username": "teacher1",
+                "first_name": "John"
+            }
+        ]
+    }
+};
+
 // Routes
 app.get('/login', (req, res) => {
-    // If user is already logged in, redirect to dashboard
+    // If user is already logged in, redirect to batch page
     if (req.session.user && req.session.user.name !== 'Guest User') {
-        return res.redirect('/dashboard');
+        return res.redirect('/batch');
     }
     res.render('login');
 });
@@ -188,7 +216,7 @@ app.post('/login', (req, res) => {
             name: name.trim(),
             loginTime: new Date()
         };
-        res.redirect('/dashboard');
+        res.redirect('/batch');
     } else {
         res.redirect('/login');
     }
@@ -196,13 +224,59 @@ app.post('/login', (req, res) => {
 
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.redirect('/dashboard');
+    res.redirect('/batch');
 });
 
-// Make dashboard the default route
+// Make batch page the default route
 app.get('/', requireAuth, async (req, res, next) => {
     try {
         const messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        const batches = await processBatchData(messages);
+        res.render('index', { 
+            title: 'Lecture Organizer',
+            batches: Object.values(batches),
+            formatFileSize,
+            moment,
+            user: req.session.user
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Batch route - main landing page
+app.get('/batch', requireAuth, async (req, res, next) => {
+    try {
+        let messages;
+        try {
+            messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        } catch (error) {
+            console.log('Using default batch data');
+            messages = defaultBatches;
+        }
+        const batches = await processBatchData(messages);
+        res.render('index', { 
+            title: 'Lecture Organizer',
+            batches: Object.values(batches),
+            formatFileSize,
+            moment,
+            user: req.session.user
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Dashboard route - now secondary
+app.get('/dashboard', requireAuth, async (req, res, next) => {
+    try {
+        let messages;
+        try {
+            messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        } catch (error) {
+            console.log('Using default batch data');
+            messages = defaultBatches;
+        }
         const batches = await processBatchData(messages);
         res.render('dashboard', {
             title: 'Dashboard - CBSEIANS',
@@ -216,7 +290,13 @@ app.get('/', requireAuth, async (req, res, next) => {
 
 app.get('/batch/:name', requireAuth, async (req, res, next) => {
     try {
-        const messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        let messages;
+        try {
+            messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        } catch (error) {
+            console.log('Using default batch data');
+            messages = defaultBatches;
+        }
         const batches = await processBatchData(messages);
         const batch = batches[req.params.name];
         
@@ -228,6 +308,39 @@ app.get('/batch/:name', requireAuth, async (req, res, next) => {
             title: `${batch.name} - Lecture Organizer`,
             batch,
             formatFileSize,
+            moment,
+            user: req.session.user
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get('/batch-messages/:batchName', requireAuth, async (req, res, next) => {
+    try {
+        let messages;
+        try {
+            messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
+        } catch (error) {
+            console.log('Using default batch data');
+            messages = defaultBatches;
+        }
+        const batchName = req.params.batchName;
+        
+        // Filter messages by batch name
+        const batchMessages = Object.entries(messages)
+            .filter(([_, msg]) => msg.batch === batchName)
+            .map(([id, msg]) => ({
+                id,
+                ...msg,
+                formattedDate: formatDateForDisplay(msg.date)
+            }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        res.render('batch_messages', {
+            title: `${batchName} - Messages`,
+            batchName,
+            messages: batchMessages,
             moment,
             user: req.session.user
         });
@@ -326,38 +439,6 @@ app.get('/books/:batch', requireAuth, async (req, res, next) => {
             files: batches[batch],
             formatFileSize,
             formatDateForDisplay,
-            user: req.session.user
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Dashboard route
-app.get('/dashboard', requireAuth, async (req, res, next) => {
-    try {
-        const messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
-        const batches = await processBatchData(messages);
-        res.render('dashboard', {
-            title: 'Dashboard - CBSEIANS',
-            user: req.session.user,
-            batches: Object.values(batches)
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Add route for /batch to show all batches
-app.get('/batch', requireAuth, async (req, res, next) => {
-    try {
-        const messages = await fs.readJson(path.join(__dirname, 'message_batch.json'));
-        const batches = await processBatchData(messages);
-        res.render('index', { 
-            title: 'Lecture Organizer',
-            batches: Object.values(batches),
-            formatFileSize,
-            moment,
             user: req.session.user
         });
     } catch (error) {
