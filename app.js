@@ -27,16 +27,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session configuration with default MemoryStore
-app.use(session({
-    secret: 'your-secret-key',
+// Session configuration
+const sessionConfig = {
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true,
+        sameSite: 'lax'
     }
-}));
+};
+
+// Use MemoryStore in development, but warn about production use
+if (process.env.NODE_ENV === 'production') {
+    console.warn('Warning: Using MemoryStore in production. Consider using a production-ready session store like Redis or MongoDB.');
+}
+
+app.use(session(sessionConfig));
 
 // View engine setup
 app.set('view engine', 'ejs');
